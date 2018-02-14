@@ -20,27 +20,27 @@ where **x** and **y** are the coordinates of the vehicle, **v** is the speed. **
 #### Cross track and orienation Error
 Besides the kinematic model, two additional states are used in this project. The cross tracking error **cte** and the orientation error **epsi**. The update rules for them are as follows.
 
-    cte (t+1)  = cte(t) + v(t) sin(epsi(t)) dt
+    cte (t+1)  = cte(t)  + v(t) sin(epsi(t)) dt
     epsi (t+1) = epsi(t) + v(t) / L * theta  dt
 
 
-## Timestep Length **N** and Elapsed Duration ** dt **
+## Timestep Length **N** and Elapsed Duration **dt**
 The timestamp length and the duration between the timestamps are two critical parameters for a MPC controller. The timestamp length defines the time horizon for simulating and optimizing the control inputs. The elapsed duration between timestamps defines how accurate the vehicle model can be simulated. A larger **N** allows the MPC to compute a longer trajectory into the future. A smaller **dt** provides a more accurate simualtion of the  vehicle model. In the meanwhile, a larger **N** and a smaller **dt** can also increase the computation time of the trajectory. This may lead to instability of the vehicle. In my project, I choose N = 9 and dt = 0.10 to make this tradeoff. I observed that if the computational time of the MPC takes too long (choosing **N** > 15, **dt** < 0.05), though the trajectory can be very smooth and looking forward to the future, the reference trajectory can be just off the road which finally cause the vehicle driving out of the track.
 
 ## Polynomial Fitting and MPC Preprocessing
 The first step of using MPC is to feed the MPC with a reference trajectory. In each cycle, the simulator send out 6 reference way points that the vehicle should follow. Two preprocessing steps are used in my implementation. As the reference way points are given in global coordinates frame, it should be first transformed into vehicle coordinate frame. This is implemented in the function
 
     void transformPts(const std::vector<double> &x_pts,
-                  const std::vector<double> &y_pts,
-                  double x_vehicle,
-                  double y_vehicle,
-                  double yaw_vehicle,
-                  std::vector<double> &x_ptsInvehicle,
-                  std::vector<double> &y_ptsInvehicle);
+                      const std::vector<double> &y_pts,
+                      double x_vehicle,
+                      double y_vehicle,
+                      double yaw_vehicle,
+                      std::vector<double> &x_ptsInvehicle,
+                      std::vector<double> &y_ptsInvehicle);
 Second, I fit the waypoints using a third order polynomials by function **polyfit**. The orientation error **epsi** must be calculated using the first differential of the Polynomial given by
 
     double epsi = - atan(3 * coeffs[3] * x * x + 2 * coeffs[2] * x + coeffs[1]);
 
- 
+
 ## Latency
 To handle the latancy, I tuned the cost function of the MPC, specifically the weights for orientation error **epsi**, corss tacking error **cte** and the change of steering angle **dtheta**. I choose 500 for  **epsi**, 5 for **cte**, 500 for **dtheta**. The reason for choosing **epsi** far bigger than **cte** is the vehicle can follow the curve as much as possible despite having some cross tracking. This makes the vehicle moving stable and do not cause instability unter latancy. A larger value for **dtheta** penalizes turning vehicle erratically. It also improves the stability of the driving. With the chosen parameters, the vehicle is able to drive with a reference speed of 50 and can keep stable on the track.
