@@ -1,9 +1,29 @@
 # CarND-Controls-MPC
-Self-Driving Car Engineer Nanodegree Program
+This project contains my implementation of MPC to control a car driving in the udacity simulator.
 
 ---
 
-## Dependencies
+## The vehicle model
+Here we have four system states and two actuators to define the vehicle model. In this project it is a simplified kinematic model which can
+be described by the following equation,
+
+x(t+1)   = x(t)  + v(t)  cos [psi(t)]  dt
+
+y(t+1)   = y(t)  + v(t)  sin [psi(t)]  dt
+
+psi(t+1) = psi(t) + v(t) / L  theta(t)  dt
+
+v(t+1)   = v (t) + a(t)  dt
+
+where **x** and **y** are the coordinates of the vehicle, **v** is the speed. **Psi** represents the orientation. **a** is the acceleration/brake of the vehicle. **theta** is the steering angle **psi**. **L** is a constant which measures the vehicle center to the front axle. 
+
+
+## Timestep Length and Elapsed Duration
+The
+
+## Polynomial Fitting and MPC Preprocessing
+
+## Model Predictive Control with Latency
 
 * cmake >= 3.5
  * All OSes: [click here for installation instructions](https://cmake.org/install/)
