@@ -2,8 +2,8 @@
 #define MPC_PARAM_H
 
 // Set the timestep length and duration
-int N = 10;
-double dt = 0.15;
+int N = 9;
+double dt = 0.10;
 
 
 // Vehicle model
@@ -18,7 +18,7 @@ int dim_actuators = 2 ;
 
 
 // Reference Velocity
-double ref_v = 60;
+double ref_v = 50;
 
 
 int x_start = 0;
