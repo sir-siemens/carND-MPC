@@ -11,6 +11,9 @@
 
 #include "reference_traj.h"
 #include <chrono>
+
+//const double Lf = 2.67;
+
 using namespace std::chrono;
 
 // for convenience
@@ -66,6 +69,10 @@ int main() {
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
 
+          // convert mph to m/s
+          v = v * 1.609344  / 3.6;
+
+
 
           // transform ptsx ptsy to vehicle cooridnate
           std::vector<double> x_ptsInvehicle;
@@ -79,6 +86,10 @@ int main() {
                              x_ptsInvehicle,
                              y_ptsInvehicle);
 
+
+
+
+
           // first fit a polynomial of the waypoint
           Eigen::VectorXd xs(x_ptsInvehicle.size());
           mpc.std_vectorToEigen(x_ptsInvehicle, xs);
@@ -89,7 +100,6 @@ int main() {
                                  ys,
                                  3) ;
           // calculate the cross track error
-          std::cout<<"polyfit"   << "coeffs" << coeffs<< std::endl;
 
           // Due to the sign starting at 0, the orientation error is -f'(x).
           // derivative of coeffs[0] + coeffs[1] * x -> coeffs[1]
@@ -99,16 +109,23 @@ int main() {
           double x = 0.0;
           double y = 0.0;
           psi = 0.0;
-          // v = 40.0;
+
+          // handle latency predict the vehicle position in 100 ms
+          // x_[t+1] = x[t] + v[t] * cos(psi[t]) * dt
+          // y_[t+1] = y[t] + v[t] * sin(psi[t]) * dt
+          // psi_[t+1] = psi[t] + v[t] / Lf * delta[t] * dt
+          double latency = 0.1;
+          x = x + v * cos(psi) * latency;
+          y = y + v * sin(psi) * latency;
+          psi = psi + v / 2.67 * mpc.lastSteeringAngle() * latency;
+          v = v + mpc.lastThrottle() * latency;
 
           // cross tracking error
-          double cte  = polyeval(coeffs, 0.0) - 0.0;
+          double cte  = polyeval(coeffs, x) - 0.0;
           // calculate the orientation error
           double epsi = - atan(3 * coeffs[3] * x * x + 2 * coeffs[2] * x + coeffs[1]);
 
-          std::cout<<"cross track error "<< cte  <<std::endl;
-          std::cout<<"epsi error "       << epsi <<std::endl;
-
+          printf("x %f y %f psi %f v %f cte %f epsi %f  lastSteeringAngle %f \n",x,y,psi,v,cte,epsi,mpc.lastSteeringAngle() );
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -145,11 +162,17 @@ int main() {
           high_resolution_clock::time_point t2 = high_resolution_clock::now();
           auto duration = duration_cast<microseconds>( t2 - t1 ).count();
 
-          cout << "mpc cycle time " <<duration <<std::endl;
+          // check the cost after optimization
+
+
 
 
           delta_vals.push_back(vars[6]);
           a_vals.push_back(vars[7]);
+
+          // update last steering angle
+          mpc.setLastSteeringAngle(delta_vals[0]);
+          mpc.setLastThrottle(a_vals[0]);
 
           steer_value    =  -delta_vals[0] ;
           throttle_value =  a_vals[0];

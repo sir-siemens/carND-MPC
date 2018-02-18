@@ -3,6 +3,7 @@
 #include <cppad/ipopt/solve.hpp>
 #include "Eigen-3.3/Eigen/Core"
 #include "mpc_param.h"
+
 using CppAD::AD;
 
 
@@ -61,31 +62,46 @@ public:
         fg[0] = 0;
 
         // The part of the cost based on the reference state.
+        CppAD::AD<double> cte, epsi, error_v,err_seq_theta;
         for (int t = 0; t < N; t++) {
 
-          fg[0] += 5  * CppAD::pow(vars[cte_start + t], 2);
-          fg[0] += 500 * CppAD::pow(vars[epsi_start + t], 2);
-          fg[0] += CppAD::pow(vars[v_start + t] - (- ref_v / 1000 * vars[cte_start + t] * vars[cte_start + t] + ref_v), 2);
+          fg[0] += 10  * CppAD::pow(vars[cte_start + t], 2);
+          cte   += 10  * CppAD::pow(vars[cte_start + t], 2);
         }
-        std::cout<<"N "<<N<<std::endl;
-        std::cout<<"cte_start[0] "<<vars[cte_start]<<std::endl;
-        std::cout<<"epsi_start[0] "<<vars[epsi_start]<<std::endl;
-        std::cout<<"v_start[0] "<<vars[v_start]<<std::endl;
-        std::cout<<"fg[0] "<<fg[0]<<std::endl;
+        std::cout<<"cte "<<fg[0]<<std::endl;
+
+        for (int t = 0; t < N; t++) {
+          fg[0] += 500 * CppAD::pow(vars[epsi_start + t], 2);
+          epsi  += 500 * CppAD::pow(vars[epsi_start + t], 2);
+        }
+        std::cout<<"epsi "<<epsi<<std::endl;
+
+        for (int t = 0; t < N; t++) {
+          //fg[0]   += 0.1 * CppAD::pow(vars[v_start + t] - (- ref_v / 1000 * vars[cte_start + t] * vars[cte_start + t] + ref_v), 2);
+          //error_v += 0.1 * CppAD::pow(vars[v_start + t] - (- ref_v / 1000 * vars[cte_start + t] * vars[cte_start + t] + ref_v), 2);
+          fg[0]   += 0.1 * CppAD::pow(vars[v_start + t] - ref_v, 2);
+          error_v += 0.1 * CppAD::pow(vars[v_start + t] - ref_v, 2);
+        }
+        std::cout<<"error_v "<<error_v<<std::endl;
 
         // Minimize the use of actuators.
         for (int t = 0; t < N - 1; t++) {
           fg[0] += CppAD::pow(vars[delta_start + t], 2);
           fg[0] += CppAD::pow(vars[a_start + t], 2);
         }
-        std::cout<<"fg[0] "<<fg[0]<<std::endl;
 
         // Minimize the value gap between sequential actuations.
         for (int t = 0; t < N - 2; t++) {
-          fg[0] += 500 * CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+          fg[0]         += 500 * CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+          err_seq_theta += 500 * CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+        }
+
+        for (int t = 0; t < N - 2; t++) {
           fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
         }
-        std::cout<<"fg[0] "<<fg[0]<<std::endl;
+
+
+        std::cout<<"err_seq_theta "<<err_seq_theta<<std::endl;
 
         //
         // Setup Constraints
@@ -97,11 +113,11 @@ public:
         // We add 1 to each of the starting indices due to cost being located at
         // index 0 of `fg`.
         // This bumps up the position of all the other values.
-        fg[1 + x_start] = vars[x_start];
-        fg[1 + y_start] = vars[y_start];
-        fg[1 + psi_start] = vars[psi_start];
-        fg[1 + v_start] = vars[v_start];
-        fg[1 + cte_start] = vars[cte_start];
+        fg[1 + x_start]    = vars[x_start];
+        fg[1 + y_start]    = vars[y_start];
+        fg[1 + psi_start]  = vars[psi_start];
+        fg[1 + v_start]    = vars[v_start];
+        fg[1 + cte_start]  = vars[cte_start];
         fg[1 + epsi_start] = vars[epsi_start];
 
         // The rest of the constraints
@@ -267,6 +283,25 @@ vector<double> MPC::Solve(Eigen::VectorXd x0,
       auto cost = solution.obj_value;
       std::cout << "Cost " << cost << std::endl;
 
+      CppAD::vector< AD<double> > fg(N * 6 + (N - 1) * 2 +1);
+
+      CppAD::vector<double> solution_vec = solution.x;
+
+
+
+      CppAD::vector< AD<double> >  solution_vars(solution_vec.size());
+
+      // copy solution_vec to solution_vars
+      for (int i = 0 ; i < solution_vec.size();i++)
+      {
+          CppAD::AD<double> value(solution_vec[i] );
+
+          solution_vars[i] = value;
+      }
+
+      std::cout << " evaluate cost after optimization" <<std::endl;
+      fg_eval(fg, solution_vars);
+
       // get result
       x_vec.resize(N);
       y_vec.resize(N);
@@ -332,7 +367,6 @@ void MPC::transformPts(   const std::vector<double> &x_pts,
                                  yInvehicle);
         x_ptsInvehicle[i] = xInvehicle;
         y_ptsInvehicle[i] = yInvehicle;
-        std::cout<<"xInvehicle"<<xInvehicle<<"yInvehicle"<<yInvehicle<<std::endl;
     }
 }
 

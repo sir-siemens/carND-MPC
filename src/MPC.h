@@ -53,9 +53,21 @@ class MPC {
   void std_vectorToEigen(const std::vector<double> &vec,
                          Eigen::VectorXd &vec_eigen);
 
+
+  void setLastSteeringAngle(double steering) { m_delta_last = steering; }
+
+  double lastSteeringAngle() {return m_delta_last;}
+
+  void setLastThrottle(double acc) { m_acc = acc;}
+
+  double lastThrottle() {return m_acc;}
+
 private:
   // initial state of the vehicle
   double m_x_0, m_y_0, m_psi_0, m_v_0, m_cte_0, m_epsi_0;
+
+  // last control of steering angle
+  double m_delta_last, m_acc;
 };
 
 #endif /* MPC_H */

@@ -18,7 +18,7 @@ int dim_actuators = 2 ;
 
 
 // Reference Velocity
-double ref_v = 50;
+double ref_v = 30;
 
 
 int x_start = 0;
